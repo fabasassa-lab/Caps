@@ -1,6 +1,7 @@
-from flask import Flask, render_template, request, send_from_directory
+from flask import Flask, render_template, request, send_from_directory, jsonify
 import os
 from PIL import Image
+from flask_cors import CORS
 import time
 from werkzeug.utils import secure_filename
 import numpy as np
@@ -10,6 +11,7 @@ from tensorflow.keras.models import load_model
 
 
 app = Flask(__name__, static_folder='images', static_url_path='/images')
+CORS(app)
 model = load_model('model.keras')
 
 UPLOAD_FOLDER = 'images'
@@ -49,17 +51,25 @@ def home():
 
 @app.route('/', methods=['POST'])
 def predict():
+    print("MASUK KE ROUTE POST")
     imagefile = request.files['imagefile']
+    print("Image file diterima:", imagefile.filename)
 
     if imagefile.filename == '':
-        return render_template('index.html', prediction="Tidak ada file yang diunggah.")
+        return jsonify({
+            "success": False,
+            "error": "Tidak ada file yang diunggah."
+        })
 
     filename = f"{int(time.time())}_{secure_filename(imagefile.filename)}"
     image_path = os.path.join(UPLOAD_FOLDER, filename)
     imagefile.save(image_path)
 
     image = extract_features(image_path)
+    print("Image shape:", image.shape)
+
     prediction = model.predict(image)
+    print("Raw prediction:", prediction)
 
     predicted_label = np.argmax(prediction)
     label_name = label_map[predicted_label]
@@ -67,11 +77,12 @@ def predict():
     final_result = f"{label_name} ({confidence:.2f}%)"
     recommendation = recommendation_map.get(label_name, "Tidak ada rekomendasi khusus.")
 
-    return render_template('index.html',
-                           prediction=final_result,
-                           recommendation=recommendation,
-                           image_filename=filename)
-
+    return jsonify({
+        "success": True,
+        "prediction": final_result,
+        "recommendation": recommendation,
+        "image_url": f"/images/{filename}"
+    })
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)
