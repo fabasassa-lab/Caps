@@ -12,7 +12,7 @@ from tensorflow.keras.models import load_model
 
 app = Flask(__name__, static_folder='images', static_url_path='/images')
 CORS(app)
-model = load_model('model/model.keras')
+model = load_model('model/densenet201.keras')
 
 UPLOAD_FOLDER = 'images'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
