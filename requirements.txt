@@ -3,5 +3,5 @@ flask-cors
 gunicorn
 tensorflow
 pillow
-Werkzeug=
+Werkzeug
 keras
