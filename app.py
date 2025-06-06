@@ -2,8 +2,7 @@ import streamlit as st
 import numpy as np
 from PIL import Image
 import tensorflow as tf
-from tensorflow.keras.preprocessing.image import img_to_array
-from tensorflow.keras.applications.densenet import preprocess_input
+import io
 
 # --- Setup Page ---
 st.set_page_config(
@@ -13,9 +12,13 @@ st.set_page_config(
 )
 
 # --- Load TFLite Model ---
-interpreter = tf.lite.Interpreter(model_path="Model/densenet201.tflite")
-interpreter.allocate_tensors()
+@st.cache_resource
+def load_tflite_model():
+    interpreter = tf.lite.Interpreter(model_path="Model/densenet201.tflite")
+    interpreter.allocate_tensors()
+    return interpreter
 
+interpreter = load_tflite_model()
 input_details = interpreter.get_input_details()
 output_details = interpreter.get_output_details()
 
@@ -42,12 +45,14 @@ recommendation_map = {
     'Sooty Mould': 'Pangkas ranting yang terlalu rimbun dan semprot air sabun ringan atau campuran air + fungisida ringan.'
 }
 
-# --- Fungsi Ekstraksi Fitur ---
-def extract_features(image):
+# --- Fungsi Preprocessing untuk TFLite ---
+def preprocess(image: Image.Image):
+    image = image.convert("RGB")
     image = image.resize((224, 224))
-    img_array = img_to_array(image)
-    img_array = preprocess_input(img_array)
-    img_array = np.expand_dims(img_array, axis=0).astype(np.float32)
+    img_array = np.array(image).astype(np.float32)
+    # Scaling pixel values to [-1,1] sesuai DenseNet
+    img_array = (img_array / 127.5) - 1.0
+    img_array = np.expand_dims(img_array, axis=0)
     return img_array
 
 # --- Header ---
@@ -62,13 +67,17 @@ with col1:
     st.subheader("1. Unggah Gambar Daun")
     uploaded_file = st.file_uploader("Format gambar: JPG / PNG", type=["jpg", "jpeg", "png"])
     example = st.checkbox("Gunakan contoh gambar (Healthy)")
+    
+    image = None
     if example:
-        uploaded_file = "sample_healthy.jpg"  # Pastikan file contoh ini ada di direktori
-        image = Image.open(uploaded_file)
+        # Pastikan contoh gambar ada di folder 'sample_images/sample_healthy.jpg'
+        try:
+            with open("sample_images/sample_healthy.jpg", "rb") as f:
+                image = Image.open(io.BytesIO(f.read()))
+        except FileNotFoundError:
+            st.error("File contoh gambar tidak ditemukan. Upload gambar manual.")
     elif uploaded_file:
         image = Image.open(uploaded_file)
-    else:
-        image = None
 
 with col2:
     if image:
@@ -81,18 +90,28 @@ st.markdown("")
 # --- Prediksi dan Output ---
 if image and st.button("🔍 Analisis Daun"):
     with st.spinner("Sedang memproses..."):
-        features = extract_features(image)
-        interpreter.set_tensor(input_details[0]['index'], features)
-        interpreter.invoke()
-        prediction = interpreter.get_tensor(output_details[0]['index'])
-        predicted_label = np.argmax(prediction)
-        label_name = label_map[predicted_label]
-        confidence = prediction[0][predicted_label] * 100
-        recommendation = recommendation_map.get(label_name, "Tidak ada rekomendasi khusus.")
+        try:
+            input_data = preprocess(image)
+            # Pastikan tipe input sesuai input_details
+            if input_details[0]['dtype'] == np.uint8:
+                input_data = ((input_data + 1) * 127.5).astype(np.uint8)
+            
+            interpreter.set_tensor(input_details[0]['index'], input_data)
+            interpreter.invoke()
+            output_data = interpreter.get_tensor(output_details[0]['index'])
+            predicted_label = np.argmax(output_data)
+            confidence = output_data[0][predicted_label] * 100
+            label_name = label_map.get(predicted_label, "Unknown")
+            recommendation = recommendation_map.get(label_name, "Tidak ada rekomendasi khusus.")
+            
+            st.success("✅ Analisis Selesai!")
+            st.markdown(f"<h3 style='color:#4CAF50;'>Hasil Prediksi: <b>{label_name}</b> ({confidence:.2f}%)</h3>", unsafe_allow_html=True)
+            st.markdown(f"<div style='background-color:#f0f9f0; padding:10px; border-radius:10px'><b>📌 Rekomendasi:</b> {recommendation}</div>", unsafe_allow_html=True)
+        except RuntimeError as e:
+            st.error(f"Runtime error saat inferensi model: {e}")
+        except Exception as e:
+            st.error(f"Terjadi kesalahan: {e}")
 
-    st.success("✅ Analisis Selesai!")
-    st.markdown(f"<h3 style='color:#4CAF50;'>Hasil Prediksi: <b>{label_name}</b> ({confidence:.2f}%)</h3>", unsafe_allow_html=True)
-    st.markdown(f"<div style='background-color:#f0f9f0; padding:10px; border-radius:10px'><b>📌 Rekomendasi:</b> {recommendation}</div>", unsafe_allow_html=True)
 elif not image and st.button("🔍 Analisis Daun"):
     st.warning("Silakan unggah gambar terlebih dahulu.")
 
