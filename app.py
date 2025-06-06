@@ -14,7 +14,7 @@ st.set_page_config(
 )
 
 # --- Load Model ---
-model = load_model('model/densenet201.keras')
+model = load_model('Model/densenet201.keras')
 
 # --- Label dan Rekomendasi ---
 label_map = {
