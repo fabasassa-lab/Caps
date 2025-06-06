@@ -4,14 +4,8 @@ from PIL import Image
 import tensorflow as tf
 import io
 
-# --- Setup Page ---
-st.set_page_config(
-    page_title="MANGALYZE - Analisis Daun Mangga",
-    layout="wide",
-    page_icon="🍃"
-)
+st.set_page_config(page_title="MANGALYZE - Analisis Daun Mangga", layout="wide", page_icon="🍃")
 
-# --- Load TFLite Model ---
 @st.cache_resource
 def load_tflite_model():
     interpreter = tf.lite.Interpreter(model_path="Model/densenet201.tflite")
@@ -22,7 +16,6 @@ interpreter = load_tflite_model()
 input_details = interpreter.get_input_details()
 output_details = interpreter.get_output_details()
 
-# --- Label dan Rekomendasi ---
 label_map = {
     0: 'Anthracnose',
     1: 'Bacterial Canker',
@@ -45,32 +38,26 @@ recommendation_map = {
     'Sooty Mould': 'Pangkas ranting yang terlalu rimbun dan semprot air sabun ringan atau campuran air + fungisida ringan.'
 }
 
-# --- Fungsi Preprocessing untuk TFLite ---
 def preprocess(image: Image.Image):
-    image = image.convert("RGB")
-    image = image.resize((224, 224))
+    image = image.convert("RGB").resize((224, 224))
     img_array = np.array(image).astype(np.float32)
-    # Scaling pixel values to [-1,1] sesuai DenseNet
-    img_array = (img_array / 127.5) - 1.0
+    img_array = (img_array / 127.5) - 1.0  # Normalisasi [-1,1]
     img_array = np.expand_dims(img_array, axis=0)
     return img_array
 
-# --- Header ---
 st.markdown("<h1 style='text-align: center; color: green;'>🍃 MANGALYZE</h1>", unsafe_allow_html=True)
 st.markdown("<h4 style='text-align: center;'>Sistem Deteksi Penyakit Daun Mangga Berbasis Deep Learning</h4>", unsafe_allow_html=True)
 st.markdown("---")
 
-# --- Layout Utama ---
 col1, col2 = st.columns([1, 2])
 
 with col1:
     st.subheader("1. Unggah Gambar Daun")
     uploaded_file = st.file_uploader("Format gambar: JPG / PNG", type=["jpg", "jpeg", "png"])
     example = st.checkbox("Gunakan contoh gambar (Healthy)")
-    
     image = None
+
     if example:
-        # Pastikan contoh gambar ada di folder 'sample_images/sample_healthy.jpg'
         try:
             with open("sample_images/sample_healthy.jpg", "rb") as f:
                 image = Image.open(io.BytesIO(f.read()))
@@ -85,17 +72,13 @@ with col2:
     else:
         st.info("Unggah gambar daun mangga untuk mulai analisis.")
 
-st.markdown("")
-
-# --- Prediksi dan Output ---
 if image and st.button("🔍 Analisis Daun"):
     with st.spinner("Sedang memproses..."):
         try:
             input_data = preprocess(image)
-            # Pastikan tipe input sesuai input_details
+            # Jika input model uint8, ubah skala input
             if input_details[0]['dtype'] == np.uint8:
                 input_data = ((input_data + 1) * 127.5).astype(np.uint8)
-            
             interpreter.set_tensor(input_details[0]['index'], input_data)
             interpreter.invoke()
             output_data = interpreter.get_tensor(output_details[0]['index'])
@@ -103,7 +86,7 @@ if image and st.button("🔍 Analisis Daun"):
             confidence = output_data[0][predicted_label] * 100
             label_name = label_map.get(predicted_label, "Unknown")
             recommendation = recommendation_map.get(label_name, "Tidak ada rekomendasi khusus.")
-            
+
             st.success("✅ Analisis Selesai!")
             st.markdown(f"<h3 style='color:#4CAF50;'>Hasil Prediksi: <b>{label_name}</b> ({confidence:.2f}%)</h3>", unsafe_allow_html=True)
             st.markdown(f"<div style='background-color:#f0f9f0; padding:10px; border-radius:10px'><b>📌 Rekomendasi:</b> {recommendation}</div>", unsafe_allow_html=True)
@@ -111,13 +94,8 @@ if image and st.button("🔍 Analisis Daun"):
             st.error(f"Runtime error saat inferensi model: {e}")
         except Exception as e:
             st.error(f"Terjadi kesalahan: {e}")
-
 elif not image and st.button("🔍 Analisis Daun"):
     st.warning("Silakan unggah gambar terlebih dahulu.")
 
-# --- Footer ---
 st.markdown("---")
-st.markdown(
-    "<div style='text-align:center; color:gray;'>© 2025 MANGALYZE | Didukung oleh Deep Learning dan Cinta Tani</div>",
-    unsafe_allow_html=True
-)
+st.markdown("<div style='text-align:center; color:gray;'>© 2025 MANGALYZE | Didukung oleh Deep Learning dan Cinta Tani</div>", unsafe_allow_html=True)
