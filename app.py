@@ -1,8 +1,7 @@
 import streamlit as st
 import numpy as np
-import os
 from PIL import Image
-from tensorflow.keras.models import load_model
+import tensorflow as tf
 from tensorflow.keras.preprocessing.image import img_to_array
 from tensorflow.keras.applications.densenet import preprocess_input
 
@@ -13,8 +12,12 @@ st.set_page_config(
     page_icon="🍃"
 )
 
-# --- Load Model ---
-model = load_model('Model/densenet201.keras')
+# --- Load TFLite Model ---
+interpreter = tf.lite.Interpreter(model_path="Model/densenet201.tflite")
+interpreter.allocate_tensors()
+
+input_details = interpreter.get_input_details()
+output_details = interpreter.get_output_details()
 
 # --- Label dan Rekomendasi ---
 label_map = {
@@ -44,7 +47,8 @@ def extract_features(image):
     image = image.resize((224, 224))
     img_array = img_to_array(image)
     img_array = preprocess_input(img_array)
-    return np.expand_dims(img_array, axis=0)
+    img_array = np.expand_dims(img_array, axis=0).astype(np.float32)
+    return img_array
 
 # --- Header ---
 st.markdown("<h1 style='text-align: center; color: green;'>🍃 MANGALYZE</h1>", unsafe_allow_html=True)
@@ -59,7 +63,7 @@ with col1:
     uploaded_file = st.file_uploader("Format gambar: JPG / PNG", type=["jpg", "jpeg", "png"])
     example = st.checkbox("Gunakan contoh gambar (Healthy)")
     if example:
-        uploaded_file = "sample_healthy.jpg"  # Pastikan file ini ada di direktori
+        uploaded_file = "sample_healthy.jpg"  # Pastikan file contoh ini ada di direktori
         image = Image.open(uploaded_file)
     elif uploaded_file:
         image = Image.open(uploaded_file)
@@ -78,7 +82,9 @@ st.markdown("")
 if image and st.button("🔍 Analisis Daun"):
     with st.spinner("Sedang memproses..."):
         features = extract_features(image)
-        prediction = model.predict(features)
+        interpreter.set_tensor(input_details[0]['index'], features)
+        interpreter.invoke()
+        prediction = interpreter.get_tensor(output_details[0]['index'])
         predicted_label = np.argmax(prediction)
         label_name = label_map[predicted_label]
         confidence = prediction[0][predicted_label] * 100
