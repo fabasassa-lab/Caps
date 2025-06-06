@@ -1,22 +1,22 @@
-from flask import Flask, render_template, request, send_from_directory, jsonify
+import streamlit as st
+import numpy as np
 import os
 from PIL import Image
-from flask_cors import CORS
-import time
-from werkzeug.utils import secure_filename
-import numpy as np
-from tensorflow.keras.preprocessing.image import load_img, img_to_array
-from tensorflow.keras.applications.resnet50 import preprocess_input
 from tensorflow.keras.models import load_model
+from tensorflow.keras.preprocessing.image import img_to_array
+from tensorflow.keras.applications.densenet import preprocess_input
 
+# --- Setup Page ---
+st.set_page_config(
+    page_title="MANGALYZE - Analisis Daun Mangga",
+    layout="wide",
+    page_icon="🍃"
+)
 
-app = Flask(__name__, static_folder='images', static_url_path='/images')
-CORS(app)
-model = load_model('Model/densenet201.keras')
+# --- Load Model ---
+model = load_model('model/densenet201.keras')
 
-UPLOAD_FOLDER = 'images'
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
+# --- Label dan Rekomendasi ---
 label_map = {
     0: 'Anthracnose',
     1: 'Bacterial Canker',
@@ -29,60 +29,70 @@ label_map = {
 }
 
 recommendation_map = {
-    'Anthracnose': 'Gunakan fungisida berbahan aktif tembaga dan tambahkan pupuk AB1.',
-    'Bacterial Canker': 'Potong bagian yang terinfeksi dan gunakan bakterisida alami.',
-    'Cutting Weevil': 'Gunakan insektisida kontak dan periksa kebersihan lingkungan sekitar tanaman.',
-    'Die Back': 'Lakukan pemangkasan daun mati dan beri pupuk tinggi kalium.',
-    'Gall Midge': 'Semprotkan insektisida sistemik dan kontrol kelembaban tanah.',
+    'Anthracnose': 'Gunakan fungisida berbahan aktif (mankozeb, tembaga hidroksida, atau propineb) sesuai dosis anjuran.',
+    'Bacterial Canker': 'Potong bagian yang terinfeksi dan gunakan bakterisida berbahan tembaga (copper-based).',
+    'Cutting Weevil': 'Gunakan insektisida berbahan aktif (imidakloprid, lambda-cyhalothrin) dan periksa kebersihan lingkungan sekitar tanaman.',
+    'Die Back': 'Lakukan pemangkasan daun mati dan semprotkan fungisida sistemik (benomil, karbendazim, tebuconazole).',
+    'Gall Midge': 'Pangkas dan bakar daun/bunga yang terinfestasi dan aplikasikan insektisida sistematik (imidakloprid, abamektin, spinosad).',
     'Healthy': 'Tanaman sehat! Lanjutkan pemupukan dan penyiraman rutin.',
-    'Powdery Mildew': 'Semprot dengan larutan belerang atau fungisida sistemik.',
-    'Sooty Mould': 'Hilangkan sumber kutu putih dan cuci daun dengan sabun hortikultura.'
+    'Powdery Mildew': 'Semprot dengan fungisida sistemik dan preventif (karathane, hexaconazole, sulfur, miklobutanil).',
+    'Sooty Mould': 'Pangkas ranting yang terlalu rimbun dan semprot air sabun ringan atau campuran air + fungisida ringan.'
 }
 
-def extract_features(image_path):
-    img = load_img(image_path, target_size=(224, 224))  # ukuran untuk CNN
-    img_array = img_to_array(img)  # (224, 224, 3)
+# --- Fungsi Ekstraksi Fitur ---
+def extract_features(image):
+    image = image.resize((224, 224))
+    img_array = img_to_array(image)
     img_array = preprocess_input(img_array)
-    return np.expand_dims(img_array, axis=0)  # (1, 224, 224, 3)
+    return np.expand_dims(img_array, axis=0)
 
-@app.route('/', methods=['GET'])
-def home():
-    return render_template('index.html')
+# --- Header ---
+st.markdown("<h1 style='text-align: center; color: green;'>🍃 MANGALYZE</h1>", unsafe_allow_html=True)
+st.markdown("<h4 style='text-align: center;'>Sistem Deteksi Penyakit Daun Mangga Berbasis Deep Learning</h4>", unsafe_allow_html=True)
+st.markdown("---")
 
-@app.route('/', methods=['POST'])
-def predict():
-    print("MASUK KE ROUTE POST")
-    imagefile = request.files['imagefile']
-    print("Image file diterima:", imagefile.filename)
+# --- Layout Utama ---
+col1, col2 = st.columns([1, 2])
 
-    if imagefile.filename == '':
-        return jsonify({
-            "success": False,
-            "error": "Tidak ada file yang diunggah."
-        })
+with col1:
+    st.subheader("1. Unggah Gambar Daun")
+    uploaded_file = st.file_uploader("Format gambar: JPG / PNG", type=["jpg", "jpeg", "png"])
+    example = st.checkbox("Gunakan contoh gambar (Healthy)")
+    if example:
+        uploaded_file = "sample_healthy.jpg"  # Pastikan file ini ada di direktori
+        image = Image.open(uploaded_file)
+    elif uploaded_file:
+        image = Image.open(uploaded_file)
+    else:
+        image = None
 
-    filename = f"{int(time.time())}_{secure_filename(imagefile.filename)}"
-    image_path = os.path.join(UPLOAD_FOLDER, filename)
-    imagefile.save(image_path)
+with col2:
+    if image:
+        st.image(image, caption="Gambar Daun", use_column_width=True)
+    else:
+        st.info("Unggah gambar daun mangga untuk mulai analisis.")
 
-    image = extract_features(image_path)
-    print("Image shape:", image.shape)
+st.markdown("")
 
-    prediction = model.predict(image)
-    print("Raw prediction:", prediction)
+# --- Prediksi dan Output ---
+if image and st.button("🔍 Analisis Daun"):
+    with st.spinner("Sedang memproses..."):
+        features = extract_features(image)
+        prediction = model.predict(features)
+        predicted_label = np.argmax(prediction)
+        label_name = label_map[predicted_label]
+        confidence = prediction[0][predicted_label] * 100
+        recommendation = recommendation_map.get(label_name, "Tidak ada rekomendasi khusus.")
 
-    predicted_label = np.argmax(prediction)
-    label_name = label_map[predicted_label]
-    confidence = prediction[0][predicted_label] * 100
-    final_result = f"{label_name} ({confidence:.2f}%)"
-    recommendation = recommendation_map.get(label_name, "Tidak ada rekomendasi khusus.")
+    st.success("✅ Analisis Selesai!")
+    st.markdown(f"<h3 style='color:#4CAF50;'>Hasil Prediksi: <b>{label_name}</b> ({confidence:.2f}%)</h3>", unsafe_allow_html=True)
+    st.markdown(f"<div style='background-color:#f0f9f0; padding:10px; border-radius:10px'><b>📌 Rekomendasi:</b> {recommendation}</div>", unsafe_allow_html=True)
+elif not image and st.button("🔍 Analisis Daun"):
+    st.warning("Silakan unggah gambar terlebih dahulu.")
 
-    return jsonify({
-        "success": True,
-        "prediction": final_result,
-        "recommendation": recommendation,
-        "image_url": f"/images/{filename}"
-    })
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', debug=True)
+# --- Footer ---
+st.markdown("---")
+st.markdown(
+    "<div style='text-align:center; color:gray;'>© 2025 MANGALYZE | Didukung oleh Deep Learning dan Cinta Tani</div>",
+    unsafe_allow_html=True
+)
