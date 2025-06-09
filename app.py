@@ -14,7 +14,7 @@ st.set_page_config(page_title="MANGALYZE - Analisis Daun Mangga", layout="wide",
 
 # Load model
 url = 'https://drive.google.com/uc?export=download&id=1zH6dxmnGUecfRyFxN5ZiELMAsMqnOWnK'
-output = 'model/densenet201.keras'
+output = 'densenet201.h5'
 gdown.download(url, output, quiet=False)
 model = load_model(output)
 
