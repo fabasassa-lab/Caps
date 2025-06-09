@@ -1,5 +1,6 @@
 import time
 import os
+import gdown
 import streamlit as st
 import numpy as np
 import tensorflow as tf
@@ -12,7 +13,10 @@ from tensorflow.keras.applications.densenet import preprocess_input
 st.set_page_config(page_title="MANGALYZE - Analisis Daun Mangga", layout="wide", page_icon="🍃")
 
 # Load model
-model = load_model('Model/densenet201.keras')
+url = 'https://drive.google.com/uc?export=download&id=1zH6dxmnGUecfRyFxN5ZiELMAsMqnOWnK'
+output = 'model/densenet201.keras'
+gdown.download(url, output, quiet=False)
+model = load_model(output)
 
 # Label and recommendation maps
 label_map = {
