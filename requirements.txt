@@ -3,3 +3,4 @@ pillow
 streamlit
 numpy
 keras==2.13.1
+gdown
