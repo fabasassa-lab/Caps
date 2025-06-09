@@ -9,10 +9,10 @@ from tensorflow.keras.preprocessing.image import load_img, img_to_array
 from tensorflow.keras.applications.densenet import preprocess_input
 
 # Set page config
-st.set_page_config(page_title="MANGALYZE - Analisis Daun Mangga", layout="centered", page_icon="🍃")
+st.set_page_config(page_title="MANGALYZE - Analisis Daun Mangga", layout="wide", page_icon="🍃")
 
 # Load model
-model = load_model('model/densenet201.keras')
+model = load_model('Model/densenet201.keras')
 
 # Label and recommendation maps
 label_map = {
