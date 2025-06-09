@@ -10,7 +10,7 @@ from tensorflow.keras.preprocessing.image import load_img, img_to_array
 from tensorflow.keras.applications.densenet import preprocess_input
 
 # Set page config
-st.set_page_config(page_title="MANGALYZE - Analisis Daun Mangga", layout="wide", page_icon="🍃")
+st.set_page_config(page_title="MANGALYZE - Analisis Daun Mangga", layout="wide", page_icon="🥭")
 
 # Load model
 url = 'https://drive.google.com/uc?export=download&id=1GHH3x1ALwSCJ5Skmncubx2wX3E8o7A92'
@@ -378,7 +378,7 @@ with col2:
         <div class="card-disease">
             <i class="bi bi-tree-fill"></i>
             <h3>Die Back</h3>
-            <p>Penyakit jamur yang menyebabkan kematian jaringan tanaman dimulai dari ujung (pucuk) ranting atau cabang.</p>
+            <p>Penyakit jamur yang menyebabkan kematian jaringan tanaman dimulai dari ujung (pucuk) ranting atau cabang, yang kemudian menyebar ke arah batang utama.</p>
         </div>
     """, unsafe_allow_html=True)
 
@@ -387,7 +387,7 @@ with col3:
         <div class="card-disease">
             <i class="bi bi-droplet-fill"></i>
             <h3>Bacterial Canker</h3>
-            <p>Penyakit berbasis bakteri yang ditandai dengan munculnya bercak nekrotik (mati) berair atau kering pada daun.</p>
+            <p>Penyakit berbasis bakteri yang ditandai dengan munculnya bercak nekrotik (mati) berair atau kering pada daun, biasanya dikelilingi oleh tepi kuning.</p>
         </div>
     """, unsafe_allow_html=True)
 
@@ -396,7 +396,7 @@ with col4:
         <div class="card-disease">
             <i class="bi bi-bug"></i>
             <h3>Gall Midge</h3>
-            <p>Serangan hama yang menyebabkan terbentuknya "gall" (bengkokan atau benjolan abnormal) pada daun.</p>
+            <p>Serangan hama yang menyebabkan terbentuknya "gall" (bengkokan atau benjolan abnormal) pada daun atau jaringan tanaman lainnya.</p>
         </div>
     """, unsafe_allow_html=True)
 
@@ -417,7 +417,7 @@ with col6:
         <div class="card-disease">
             <i class="bi bi-bug-fill"></i>
             <h3>Cutting Weevil</h3>
-            <p>Serangan hama dari kelompok kumbang kecil yang menyerang tunas muda, tangkai bunga, dan cabang kecil.</p>
+            <p>Serangan hama dari kelompok kumbang kecil yang menyerang tunas muda, tangkai bunga, dan cabang kecil dengan cara memotong atau menggigit pangkal jaringan.</p>
         </div>
     """, unsafe_allow_html=True)
 
